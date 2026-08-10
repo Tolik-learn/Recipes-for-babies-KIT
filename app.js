@@ -6,8 +6,130 @@ const ICONS = {
   freezer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M12 2l-2 2m2-2l2 2M12 22l-2-2m2 2l2-2M4.5 6.5l2.7-.5m-2.7.5l.5-2.7M19.5 6.5l-2.7-.5m2.7.5l-.5-2.7M4.5 17.5l2.7.5m-2.7-.5l.5 2.7M19.5 17.5l-2.7.5m2.7-.5l-.5 2.7"/></svg>`
 };
 
+// ---- copyright / access-request gate ----
+const GOOGLE_FORM_ID = '1FAIpQLSfrmL7lcHIaeVbgpDeFC_uHeLgDZ4_1IuaLyuJI6XAkeD6KjQ';
+const GOOGLE_FORM_ENTRY_NAME = 'entry.1840627390';
+const GOOGLE_FORM_ENTRY_EMAIL = 'entry.265476505';
+const SHEET_ID = '1FEFSWQnKZcx3FgboSilJggYhVJhp99aIeLNg-GsGIKQ';
+const SHEET_TAB = '1'; // first tab, by index
+const APPROVED_KEY = 'yafit_recipe_site_approved_email_v1';
+const PENDING_KEY = 'yafit_recipe_site_pending_email_v1';
+
+const gateOverlay = document.getElementById('gateOverlay');
+const gateStateForm = document.getElementById('gateStateForm');
+const gateStatePending = document.getElementById('gateStatePending');
+const gateRequestForm = document.getElementById('gateRequestForm');
+const gateNameInput = document.getElementById('gateNameInput');
+const gateEmailInput = document.getElementById('gateEmailInput');
+const gateCheckBtn = document.getElementById('gateCheckBtn');
+const gateStatusMsg = document.getElementById('gateStatusMsg');
+
+function unlockSite(){
+  gateOverlay.classList.remove('open');
+  document.body.classList.remove('gate-locked');
+}
+function lockSite(){
+  gateOverlay.classList.add('open');
+  document.body.classList.add('gate-locked');
+}
+function showPendingState(){
+  gateStateForm.style.display = 'none';
+  gateStatePending.style.display = 'block';
+}
+function showFormState(){
+  gateStateForm.style.display = 'block';
+  gateStatePending.style.display = 'none';
+}
+
+async function checkApproval(email){
+  const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${SHEET_TAB}`, {cache:'no-store'});
+  if(!res.ok) throw new Error('sheet fetch failed');
+  const rows = await res.json();
+  const norm = email.trim().toLowerCase();
+  return rows.some(row => {
+    const rowEmail = (row['Email Address'] || row['Email'] || '').trim().toLowerCase();
+    const approved = (row['Approved'] || '').trim().toUpperCase();
+    return rowEmail === norm && approved === 'TRUE';
+  });
+}
+
+function submitToGoogleForm(name, email){
+  const form = document.createElement('form');
+  form.action = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
+  form.method = 'POST';
+  form.target = 'gateHiddenFrame';
+  form.style.display = 'none';
+  const f1 = document.createElement('input');
+  f1.name = GOOGLE_FORM_ENTRY_NAME; f1.value = name;
+  const f2 = document.createElement('input');
+  f2.name = GOOGLE_FORM_ENTRY_EMAIL; f2.value = email;
+  form.appendChild(f1); form.appendChild(f2);
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(()=> form.remove(), 1000);
+}
+
+gateRequestForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const name = gateNameInput.value.trim();
+  const email = gateEmailInput.value.trim();
+  if(!name || !email) return;
+  submitToGoogleForm(name, email);
+  localStorage.setItem(PENDING_KEY, email);
+  showPendingState();
+  gateStatusMsg.textContent = '';
+});
+
+gateCheckBtn.addEventListener('click', async ()=>{
+  const email = localStorage.getItem(PENDING_KEY);
+  if(!email) return;
+  gateStatusMsg.className = 'gate-status pending';
+  gateStatusMsg.textContent = 'בודק מול רשימת האישורים...';
+  try{
+    const approved = await checkApproval(email);
+    if(approved){
+      localStorage.setItem(APPROVED_KEY, email);
+      localStorage.removeItem(PENDING_KEY);
+      unlockSite();
+    } else {
+      gateStatusMsg.className = 'gate-status pending';
+      gateStatusMsg.textContent = 'עדיין לא אושר — נסו שוב בעוד כמה דקות.';
+    }
+  }catch(err){
+    gateStatusMsg.className = 'gate-status denied';
+    gateStatusMsg.textContent = 'שגיאה בבדיקה, נסו שוב.';
+  }
+});
+
+async function initGate(){
+  const approvedEmail = localStorage.getItem(APPROVED_KEY);
+  if(approvedEmail){
+    // re-validate periodically could go here; for now trust local approval
+    unlockSite();
+    return;
+  }
+  lockSite();
+  const pendingEmail = localStorage.getItem(PENDING_KEY);
+  if(pendingEmail){
+    showPendingState();
+    // auto-check once on load
+    try{
+      const approved = await checkApproval(pendingEmail);
+      if(approved){
+        localStorage.setItem(APPROVED_KEY, pendingEmail);
+        localStorage.removeItem(PENDING_KEY);
+        unlockSite();
+      }
+    }catch(err){ /* silent - user can press check button */ }
+  } else {
+    showFormState();
+  }
+}
+initGate();
+
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
+const guideFiltersEl = document.getElementById('guideFilters');
 const searchInput = document.getElementById('searchInput');
 const emptyState = document.getElementById('emptyState');
 const overlay = document.getElementById('overlay');
@@ -18,12 +140,27 @@ function ageKey(ageStr){
   const m = ageStr.match(/\d+/);
   return m ? m[0] : ageStr;
 }
-const ages = Array.from(new Set(RECIPES_GUIDE1.map(r => ageKey(r.age)))).sort((a,b)=>Number(a)-Number(b));
+const ages = Array.from(new Set(RECIPES_ALL.map(r => ageKey(r.age)))).sort((a,b)=>Number(a)-Number(b));
 let activeAge = 'all';
+let activeGuide = 'all';
 let activeQuery = '';
 
+function renderGuideFilters(){
+  const chips = [{k:'all', label:'כל המדריכים'}, ...GUIDES.map(g => ({k:String(g.id), label:`${g.name} · ${g.subtitle}`}))];
+  guideFiltersEl.innerHTML = chips.map(c =>
+    `<button class="chip ${activeGuide===c.k?'active':''}" data-guide="${c.k}">${c.label}</button>`
+  ).join('');
+  guideFiltersEl.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      activeGuide = btn.dataset.guide;
+      renderGuideFilters();
+      renderGrid();
+    });
+  });
+}
+
 function renderFilters(){
-  const chips = [{k:'all', label:'הכל'}, ...ages.map(a => ({k:a, label:`מגיל ${a} חודשים`}))];
+  const chips = [{k:'all', label:'כל הגילאים'}, ...ages.map(a => ({k:a, label:`מגיל ${a} חודשים`}))];
   filtersEl.innerHTML = chips.map(c =>
     `<button class="chip ${activeAge===c.k?'active':''}" data-age="${c.k}">${c.label}</button>`
   ).join('');
@@ -38,17 +175,20 @@ function renderFilters(){
 
 function renderGrid(){
   const q = activeQuery.trim();
-  const filtered = RECIPES_GUIDE1.filter(r=>{
+  const filtered = RECIPES_ALL.filter(r=>{
     const matchesAge = activeAge==='all' || ageKey(r.age)===activeAge;
+    const matchesGuide = activeGuide==='all' || String(r.guide)===activeGuide;
     const matchesQuery = !q || r.title.includes(q) || r.ingredients.some(i=>i.includes(q));
-    return matchesAge && matchesQuery;
+    return matchesAge && matchesGuide && matchesQuery;
   });
   emptyState.style.display = filtered.length ? 'none' : 'block';
   grid.innerHTML = filtered.map(r => `
-    <div class="card" data-page="${r.page}">
+    <div class="card" data-id="${r.id}">
       <div class="thumb">
         <img src="${r.image}" alt="${r.title}" loading="lazy">
         <span class="age-pill">מגיל ${r.age}</span>
+        <span class="guide-pill">מדריך ${r.guide}</span>
+        <span class="credit-tag">@yafit.shw</span>
       </div>
       <div class="body">
         <h3>${r.title}</h3>
@@ -61,19 +201,19 @@ function renderGrid(){
     </div>
   `).join('');
   grid.querySelectorAll('.card').forEach(card=>{
-    card.addEventListener('click', ()=> openDetail(Number(card.dataset.page)));
+    card.addEventListener('click', ()=> openDetail(card.dataset.id));
   });
 }
 
-function openDetail(page){
-  const r = RECIPES_GUIDE1.find(x=>x.page===page);
+function openDetail(id){
+  const r = RECIPES_ALL.find(x=>x.id===id);
   if(!r) return;
   detailContent.innerHTML = `
     <button class="detail-close" id="closeBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D2410" stroke-width="2.4"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
     <div class="detail-grid">
-      <div class="detail-photo"><img src="${r.image}" alt="${r.title}"></div>
+      <div class="detail-photo"><img src="${r.image}" alt="${r.title}"><span class="credit-tag detail-credit">@yafit.shw</span></div>
       <div class="detail-content">
         <div class="detail-title-banner">
           <h2>${r.title}</h2>
@@ -116,5 +256,6 @@ searchInput.addEventListener('input', (e)=>{
   renderGrid();
 });
 
+renderGuideFilters();
 renderFilters();
 renderGrid();

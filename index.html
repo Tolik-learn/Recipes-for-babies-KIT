@@ -3,10 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
 <title>100 המתכונים הראשונים שלי | קיט מתכונים דיגיטלי לתינוקות</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<div class="overlay gate-overlay open" id="gateOverlay">
+  <div class="detail gate-card">
+    <div class="gate-inner">
+      <div class="gate-icon">©</div>
+      <h2>לפני שממשיכים</h2>
+      <p class="gate-text">
+        כל המתכונים, הטקסטים והתמונות באתר זה נוצרו על ידי
+        <strong> yafit.shw </strong>
+        (<a href="https://instagram.com/yafit.shw" target="_blank" rel="noopener">@yafit.shw</a>)
+        ומוגנים בזכויות יוצרים. הכניסה לאתר טעונה אישור.
+      </p>
+
+      <!-- state: request form -->
+      <div id="gateStateForm">
+        <p class="gate-text">מלאו את הפרטים שלכם, ותקבלו גישה לאחר אישור.</p>
+        <form id="gateRequestForm" class="gate-form">
+          <input type="text" id="gateNameInput" placeholder="שם מלא" required>
+          <input type="email" id="gateEmailInput" placeholder="אימייל" required>
+          <button type="submit" class="btn btn-primary gate-btn">שליחת בקשת גישה</button>
+        </form>
+      </div>
+
+      <!-- state: pending approval -->
+      <div id="gateStatePending" style="display:none;">
+        <p class="gate-text">
+          הבקשה שלך נשלחה ✉️<br>
+          ברגע שתאושר, לחיצה על הכפתור למטה תפתח את האתר.
+        </p>
+        <button class="btn btn-primary gate-btn" id="gateCheckBtn">בדיקת אישור</button>
+        <div class="gate-status" id="gateStatusMsg"></div>
+      </div>
+
+      <!-- hidden iframe target for Google Form submission -->
+      <iframe name="gateHiddenFrame" style="display:none;"></iframe>
+    </div>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="topbar-inner">
@@ -24,13 +63,13 @@
     <h1>100 המתכונים<small>הראשונים שלי</small></h1>
     <p class="lead">מתכונים פשוטים, טעימים ומדויקים, בנויים שלב אחר שלב – כדי להפוך את השלב הזה למהנה ומלא ביטחון עבורכם ועבור התינוק.</p>
     <div class="cta-row">
-      <a href="#recipes" class="btn btn-primary">לכל 45 המתכונים ↓</a>
+      <a href="#recipes" class="btn btn-primary">לכל 80 המתכונים ↓</a>
       <a href="#notes" class="btn btn-ghost">רגע לפני שמתחילים</a>
     </div>
     <div class="badge-row">
-      <span class="badge">מדריך 1 מתוך 3</span>
-      <span class="badge">45 מתכונים</span>
-      <span class="badge">לבוקר / ערב / ביניים</span>
+      <span class="badge">4 מדריכים דיגיטליים</span>
+      <span class="badge">80 מתכונים</span>
+      <span class="badge">בוקר / ערב / ביניים / עיקריות</span>
       <span class="badge">מגיל 6 חודשים</span>
     </div>
   </div>
@@ -75,17 +114,19 @@
 <section id="recipes" style="background:var(--band-mid);">
   <div class="section-head">
     <h2>כל המתכונים</h2>
-    <p>45 מתכונים לבוקר, ערב וביניים — סננו לפי גיל או חפשו לפי שם</p>
+    <p>80 מתכונים משני המדריכים הראשונים — סננו לפי מדריך, גיל או חפשו לפי שם</p>
     <div class="rule"></div>
   </div>
+  <div class="filters guide-filters" id="guideFilters"></div>
   <div class="filters" id="filters"></div>
   <div class="grid" id="grid"></div>
   <div class="empty-state" id="emptyState">לא נמצאו מתכונים תואמים 🥄</div>
 </section>
 
 <footer>
-  <div class="fbrand">yafit.shw</div>
-  <div>קיט מתכונים דיגיטלי לתינוקות · מדריך 1 מתוך 3</div>
+  <div class="fbrand">yafit.shw © כל הזכויות שמורות</div>
+  <div>קיט מתכונים דיגיטלי לתינוקות · המתכונים, הטקסטים והתמונות באתר זה נוצרו על ידי yafit.shw</div>
+  <div class="fnote">האתר לשימוש אישי/משפחתי בלבד · אין להעתיק, לשכפל, להפיץ או להעלות מחדש ללא רשות מפורשת מהיוצרת</div>
 </footer>
 
 <div class="overlay" id="overlay">
