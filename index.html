@@ -41,6 +41,20 @@
         <div class="gate-status" id="gateStatusMsg"></div>
       </div>
 
+      <!-- state: agree to terms (shown once, after approval) -->
+      <div id="gateStateAgree" style="display:none;">
+        <p class="gate-text">
+          הבקשה שלך אושרה! 🎉<br>
+          לפני הכניסה, נא לאשר את תנאי השימוש:
+        </p>
+        <label class="gate-agree-row">
+          <input type="checkbox" id="gateAgreeCheckbox">
+          <span>אני מבין/ה ומסכים/ה שהשימוש באתר ובתכניו הוא לשימוש אישי ומשפחתי בלבד, ואין להעתיק, לשתף או להפיץ את המתכונים, הטקסטים או התמונות בכל דרך שהיא.</span>
+        </label>
+        <button class="btn btn-primary gate-btn" id="gateAgreeBtn">כניסה לאתר</button>
+        <div class="gate-status" id="gateAgreeMsg"></div>
+      </div>
+
       <!-- hidden iframe target for Google Form submission -->
       <iframe name="gateHiddenFrame" style="display:none;"></iframe>
     </div>

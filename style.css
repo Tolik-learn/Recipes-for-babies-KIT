@@ -232,6 +232,15 @@ body.gate-locked{overflow:hidden;}
 .gate-status{margin-top:14px;font-size:.85rem;color:var(--ink-soft);min-height:1.2em;}
 .gate-status.pending{color:var(--sage-line);}
 .gate-status.denied{color:#b1503b;}
+.gate-agree-row{
+  display:flex;align-items:flex-start;gap:10px;text-align:right;
+  margin-top:18px;padding:14px;background:var(--band-mid);
+  border-radius:12px;cursor:pointer;
+}
+.gate-agree-row input[type="checkbox"]{
+  margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--terracotta);cursor:pointer;
+}
+.gate-agree-row span{font-size:.9rem;line-height:1.5;color:var(--ink);}
 
 .detail-content h3.block-title{
   color:var(--terracotta-deep);font-size:1.12rem;margin-bottom:12px;padding-bottom:8px;

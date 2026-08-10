@@ -14,15 +14,20 @@ const SHEET_ID = '1FEFSWQnKZcx3FgboSilJggYhVJhp99aIeLNg-GsGIKQ';
 const SHEET_TAB = '1'; // first tab, by index
 const APPROVED_KEY = 'yafit_recipe_site_approved_email_v1';
 const PENDING_KEY = 'yafit_recipe_site_pending_email_v1';
+const AGREED_KEY = 'yafit_recipe_site_agreed_terms_v1';
 
 const gateOverlay = document.getElementById('gateOverlay');
 const gateStateForm = document.getElementById('gateStateForm');
 const gateStatePending = document.getElementById('gateStatePending');
+const gateStateAgree = document.getElementById('gateStateAgree');
 const gateRequestForm = document.getElementById('gateRequestForm');
 const gateNameInput = document.getElementById('gateNameInput');
 const gateEmailInput = document.getElementById('gateEmailInput');
 const gateCheckBtn = document.getElementById('gateCheckBtn');
 const gateStatusMsg = document.getElementById('gateStatusMsg');
+const gateAgreeCheckbox = document.getElementById('gateAgreeCheckbox');
+const gateAgreeBtn = document.getElementById('gateAgreeBtn');
+const gateAgreeMsg = document.getElementById('gateAgreeMsg');
 
 function unlockSite(){
   gateOverlay.classList.remove('open');
@@ -35,10 +40,25 @@ function lockSite(){
 function showPendingState(){
   gateStateForm.style.display = 'none';
   gateStatePending.style.display = 'block';
+  gateStateAgree.style.display = 'none';
 }
 function showFormState(){
   gateStateForm.style.display = 'block';
   gateStatePending.style.display = 'none';
+  gateStateAgree.style.display = 'none';
+}
+function showAgreeState(){
+  gateStateForm.style.display = 'none';
+  gateStatePending.style.display = 'none';
+  gateStateAgree.style.display = 'block';
+}
+// after approval is confirmed: show terms once, or unlock straight away if already agreed
+function proceedAfterApproval(){
+  if(localStorage.getItem(AGREED_KEY)){
+    unlockSite();
+  } else {
+    showAgreeState();
+  }
 }
 
 async function checkApproval(email){
@@ -90,7 +110,7 @@ gateCheckBtn.addEventListener('click', async ()=>{
     if(approved){
       localStorage.setItem(APPROVED_KEY, email);
       localStorage.removeItem(PENDING_KEY);
-      unlockSite();
+      proceedAfterApproval();
     } else {
       gateStatusMsg.className = 'gate-status pending';
       gateStatusMsg.textContent = 'עדיין לא אושר — נסו שוב בעוד כמה דקות.';
@@ -101,11 +121,22 @@ gateCheckBtn.addEventListener('click', async ()=>{
   }
 });
 
+gateAgreeBtn.addEventListener('click', ()=>{
+  if(!gateAgreeCheckbox.checked){
+    gateAgreeMsg.className = 'gate-status denied';
+    gateAgreeMsg.textContent = 'יש לסמן את התיבה כדי להמשיך.';
+    return;
+  }
+  localStorage.setItem(AGREED_KEY, '1');
+  unlockSite();
+});
+
 async function initGate(){
   const approvedEmail = localStorage.getItem(APPROVED_KEY);
   if(approvedEmail){
     // re-validate periodically could go here; for now trust local approval
-    unlockSite();
+    lockSite();
+    proceedAfterApproval();
     return;
   }
   lockSite();
@@ -118,7 +149,7 @@ async function initGate(){
       if(approved){
         localStorage.setItem(APPROVED_KEY, pendingEmail);
         localStorage.removeItem(PENDING_KEY);
-        unlockSite();
+        proceedAfterApproval();
       }
     }catch(err){ /* silent - user can press check button */ }
   } else {
