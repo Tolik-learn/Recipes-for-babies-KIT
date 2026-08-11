@@ -70,6 +70,13 @@ img{max-width:100%;display:block;}
 }
 .logout-btn:hover{background:var(--band-mid);}
 .logout-btn svg{width:17px;height:17px;}
+.admin-nav-btn{
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+  background:var(--terracotta);color:#fff;font-family:'Rubik';font-weight:700;font-size:.85rem;
+  padding:9px 16px;border-radius:999px;text-decoration:none;transition:transform .15s;
+}
+.admin-nav-btn:hover{transform:translateY(-1px);}
+.admin-nav-btn svg{width:15px;height:15px;}
 
 /* ---------- hero ---------- */
 .hero{
@@ -302,9 +309,6 @@ body.gate-locked{overflow:hidden;}
 footer{padding:50px 28px 60px;text-align:center;color:var(--ink-soft);font-size:.85rem;}
 footer .fbrand{font-family:'Rubik';font-weight:800;color:var(--terracotta-deep);font-size:1.1rem;margin-bottom:8px;}
 footer .fnote{margin-top:10px;font-size:.76rem;opacity:.75;max-width:520px;margin-inline:auto;line-height:1.6;}
-footer .fadmin{margin-top:18px;}
-footer .fadmin a{font-size:.72rem;color:var(--ink-soft);opacity:.45;text-decoration:none;}
-footer .fadmin a:hover{opacity:.8;}
 
 @media (max-width:600px){
   .topbar-inner{flex-wrap:wrap;}

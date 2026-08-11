@@ -43,10 +43,10 @@
   <div id="lockScreen" class="admin-lock">
     <div class="gate-icon" style="margin:0 auto 14px;">🔒</div>
     <h2 style="color:var(--terracotta);margin-bottom:10px;">ניהול מורשים</h2>
-    <p style="color:var(--ink-soft);font-size:.9rem;">הכניסי את סיסמת הניהול כדי להמשיך</p>
-    <input type="password" id="secretInput" placeholder="סיסמת ניהול">
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="unlockBtn">כניסה</button>
-    <div id="lockError" style="color:#b1503b;font-size:.85rem;margin-top:10px;"></div>
+    <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:6px;">רק בעל האתר יכול להיכנס לעמוד הזה.</p>
+    <p style="color:var(--ink-soft);font-size:.85rem;margin-bottom:16px;">התחבר עם חשבון ה-Google שלך כדי להמשיך.</p>
+    <div id="adminGoogleBtn" style="display:flex;justify-content:center;margin:10px 0;"></div>
+    <div id="lockError" style="color:#b1503b;font-size:.85rem;margin-top:12px;"></div>
   </div>
 
   <div id="adminPanel" style="display:none;">
@@ -57,30 +57,30 @@
   </div>
 </div>
 
+<script src="https://accounts.google.com/gsi/client"></script>
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
-const SECRET_KEY = 'yafit_admin_secret_v1';
+const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.googleusercontent.com';
+const IDTOKEN_KEY = 'yafit_admin_idtoken_v1';
 
 const lockScreen = document.getElementById('lockScreen');
 const adminPanel = document.getElementById('adminPanel');
-const secretInput = document.getElementById('secretInput');
-const unlockBtn = document.getElementById('unlockBtn');
 const lockError = document.getElementById('lockError');
 const listContainer = document.getElementById('listContainer');
 const refreshBtn = document.getElementById('refreshBtn');
 
-function getSecret(){ return localStorage.getItem(SECRET_KEY) || ''; }
+function getIdToken(){ return sessionStorage.getItem(IDTOKEN_KEY) || ''; }
 
-async function tryUnlock(secret){
+async function tryUnlock(idToken){
   lockError.textContent = '';
   try{
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&secret=${encodeURIComponent(secret)}`, {cache:'no-store'});
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&idtoken=${encodeURIComponent(idToken)}`, {cache:'no-store'});
     const data = await res.json();
     if(data.error){
-      lockError.textContent = 'סיסמה שגויה.';
+      lockError.textContent = 'החשבון הזה לא מורשה לנהל את האתר.';
       return;
     }
-    localStorage.setItem(SECRET_KEY, secret);
+    sessionStorage.setItem(IDTOKEN_KEY, idToken);
     lockScreen.style.display = 'none';
     adminPanel.style.display = 'block';
     renderList(data);
@@ -89,8 +89,20 @@ async function tryUnlock(secret){
   }
 }
 
-unlockBtn.addEventListener('click', ()=> tryUnlock(secretInput.value.trim()));
-secretInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') tryUnlock(secretInput.value.trim()); });
+function handleAdminGoogleSignIn(response){
+  tryUnlock(response.credential);
+}
+
+if(window.google && google.accounts && google.accounts.id){
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleAdminGoogleSignIn
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('adminGoogleBtn'),
+    { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'iw' }
+  );
+}
 
 function renderList(rows){
   if(!rows.length){
@@ -125,21 +137,21 @@ function renderList(rows){
 }
 
 async function toggleApproval(row, approve){
-  const secret = getSecret();
-  await fetch(`${APPS_SCRIPT_URL}?action=setApproval&secret=${encodeURIComponent(secret)}&row=${row}&value=${approve}`, {cache:'no-store'});
+  const idToken = getIdToken();
+  await fetch(`${APPS_SCRIPT_URL}?action=setApproval&idtoken=${encodeURIComponent(idToken)}&row=${row}&value=${approve}`, {cache:'no-store'});
   loadList();
 }
 
 async function loadList(){
   listContainer.innerHTML = '<div class="admin-loading">טוען...</div>';
-  const secret = getSecret();
+  const idToken = getIdToken();
   try{
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&secret=${encodeURIComponent(secret)}`, {cache:'no-store'});
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&idtoken=${encodeURIComponent(idToken)}`, {cache:'no-store'});
     const data = await res.json();
     if(data.error){
       lockScreen.style.display = 'block';
       adminPanel.style.display = 'none';
-      localStorage.removeItem(SECRET_KEY);
+      sessionStorage.removeItem(IDTOKEN_KEY);
       return;
     }
     renderList(data);
@@ -150,9 +162,9 @@ async function loadList(){
 
 refreshBtn.addEventListener('click', loadList);
 
-// auto-unlock if secret already saved
-const savedSecret = getSecret();
-if(savedSecret){
+// auto-unlock if a still-valid token is cached for this browser tab session
+const savedToken = getIdToken();
+if(savedToken){
   lockScreen.style.display = 'none';
   adminPanel.style.display = 'block';
   loadList();
@@ -160,3 +172,4 @@ if(savedSecret){
 </script>
 </body>
 </html>
+
