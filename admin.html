@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>ניהול מורשים | קיט מתכונים</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .admin-wrap{max-width:760px;margin:0 auto;padding:50px 24px 90px;}
+  .admin-title{color:var(--terracotta);font-size:1.8rem;margin-bottom:6px;}
+  .admin-sub{color:var(--ink-soft);font-size:.92rem;margin-bottom:28px;}
+  .admin-lock{
+    background:#fff;border-radius:20px;padding:34px;box-shadow:var(--shadow);
+    max-width:420px;margin:60px auto;text-align:center;
+  }
+  .admin-lock input{
+    width:100%;padding:12px 16px;border-radius:12px;border:1.5px solid rgba(180,113,75,.25);
+    font-family:'Heebo';font-size:.95rem;margin:16px 0;outline:none;
+  }
+  .admin-lock input:focus{border-color:var(--terracotta);}
+  table.admin-table{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
+  table.admin-table th{background:var(--band-mid);color:var(--terracotta-deep);font-family:'Rubik';font-weight:700;font-size:.82rem;padding:12px 14px;text-align:right;}
+  table.admin-table td{padding:12px 14px;border-top:1px solid rgba(180,113,75,.1);font-size:.9rem;vertical-align:middle;}
+  table.admin-table tr:hover td{background:rgba(180,113,75,.04);}
+  .status-pill{font-family:'Rubik';font-weight:700;font-size:.75rem;padding:4px 12px;border-radius:999px;display:inline-block;}
+  .status-pill.approved{background:rgba(126,154,114,.18);color:var(--sage-line);}
+  .status-pill.pending{background:rgba(180,113,75,.14);color:var(--terracotta-deep);}
+  .row-btn{
+    font-family:'Rubik';font-weight:700;font-size:.8rem;padding:7px 16px;border-radius:999px;
+    border:none;cursor:pointer;
+  }
+  .row-btn.approve{background:var(--sage);color:#fff;}
+  .row-btn.revoke{background:#fff;color:#b1503b;border:1.5px solid #b1503b;}
+  .admin-empty{text-align:center;color:var(--ink-soft);padding:40px;}
+  .admin-refresh{margin-bottom:16px;}
+  .admin-loading{text-align:center;color:var(--ink-soft);padding:40px;}
+</style>
+</head>
+<body>
+
+<div class="admin-wrap">
+  <div id="lockScreen" class="admin-lock">
+    <div class="gate-icon" style="margin:0 auto 14px;">🔒</div>
+    <h2 style="color:var(--terracotta);margin-bottom:10px;">ניהול מורשים</h2>
+    <p style="color:var(--ink-soft);font-size:.9rem;">הכניסי את סיסמת הניהול כדי להמשיך</p>
+    <input type="password" id="secretInput" placeholder="סיסמת ניהול">
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="unlockBtn">כניסה</button>
+    <div id="lockError" style="color:#b1503b;font-size:.85rem;margin-top:10px;"></div>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+    <h1 class="admin-title">ניהול מורשים</h1>
+    <p class="admin-sub">כל מי שביקש גישה לאתר המתכונים. אשרי או בטלי גישה בלחיצת כפתור.</p>
+    <button class="btn btn-ghost admin-refresh" id="refreshBtn">↻ רענון רשימה</button>
+    <div id="listContainer"></div>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
+const SECRET_KEY = 'yafit_admin_secret_v1';
+
+const lockScreen = document.getElementById('lockScreen');
+const adminPanel = document.getElementById('adminPanel');
+const secretInput = document.getElementById('secretInput');
+const unlockBtn = document.getElementById('unlockBtn');
+const lockError = document.getElementById('lockError');
+const listContainer = document.getElementById('listContainer');
+const refreshBtn = document.getElementById('refreshBtn');
+
+function getSecret(){ return localStorage.getItem(SECRET_KEY) || ''; }
+
+async function tryUnlock(secret){
+  lockError.textContent = '';
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&secret=${encodeURIComponent(secret)}`, {cache:'no-store'});
+    const data = await res.json();
+    if(data.error){
+      lockError.textContent = 'סיסמה שגויה.';
+      return;
+    }
+    localStorage.setItem(SECRET_KEY, secret);
+    lockScreen.style.display = 'none';
+    adminPanel.style.display = 'block';
+    renderList(data);
+  }catch(err){
+    lockError.textContent = 'שגיאת חיבור, נסי שוב.';
+  }
+}
+
+unlockBtn.addEventListener('click', ()=> tryUnlock(secretInput.value.trim()));
+secretInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') tryUnlock(secretInput.value.trim()); });
+
+function renderList(rows){
+  if(!rows.length){
+    listContainer.innerHTML = '<div class="admin-empty">אין עדיין בקשות גישה 🙂</div>';
+    return;
+  }
+  rows.sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp));
+  listContainer.innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>שם</th><th>מייל</th><th>סטטוס</th><th>תאריך</th><th></th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr data-row="${r.row}">
+            <td>${r.name || '—'}</td>
+            <td style="direction:ltr;text-align:right;">${r.email}</td>
+            <td><span class="status-pill ${r.approved ? 'approved' : 'pending'}">${r.approved ? 'מאושר' : 'ממתין'}</span></td>
+            <td>${new Date(r.timestamp).toLocaleDateString('he-IL')}</td>
+            <td>
+              ${r.approved
+                ? `<button class="row-btn revoke" data-action="revoke" data-row="${r.row}">בטל גישה</button>`
+                : `<button class="row-btn approve" data-action="approve" data-row="${r.row}">אשר גישה</button>`
+              }
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  listContainer.querySelectorAll('button[data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=> toggleApproval(btn.dataset.row, btn.dataset.action === 'approve'));
+  });
+}
+
+async function toggleApproval(row, approve){
+  const secret = getSecret();
+  await fetch(`${APPS_SCRIPT_URL}?action=setApproval&secret=${encodeURIComponent(secret)}&row=${row}&value=${approve}`, {cache:'no-store'});
+  loadList();
+}
+
+async function loadList(){
+  listContainer.innerHTML = '<div class="admin-loading">טוען...</div>';
+  const secret = getSecret();
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=list&secret=${encodeURIComponent(secret)}`, {cache:'no-store'});
+    const data = await res.json();
+    if(data.error){
+      lockScreen.style.display = 'block';
+      adminPanel.style.display = 'none';
+      localStorage.removeItem(SECRET_KEY);
+      return;
+    }
+    renderList(data);
+  }catch(err){
+    listContainer.innerHTML = '<div class="admin-empty">שגיאה בטעינה, נסי שוב.</div>';
+  }
+}
+
+refreshBtn.addEventListener('click', loadList);
+
+// auto-unlock if secret already saved
+const savedSecret = getSecret();
+if(savedSecret){
+  lockScreen.style.display = 'none';
+  adminPanel.style.display = 'block';
+  loadList();
+}
+</script>
+</body>
+</html>
