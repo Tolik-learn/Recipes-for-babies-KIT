@@ -3,8 +3,74 @@ const ICONS = {
   age: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 15c-1 1.5-1 3 0 4M16 15c1 1.5 1 3 0 4M9 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM15 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>`,
   time: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
   fridge: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 10h14M8 5v2M8 13v2"/></svg>`,
-  freezer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M12 2l-2 2m2-2l2 2M12 22l-2-2m2 2l2-2M4.5 6.5l2.7-.5m-2.7.5l.5-2.7M19.5 6.5l-2.7-.5m2.7.5l-.5-2.7M4.5 17.5l2.7.5m-2.7-.5l.5 2.7M19.5 17.5l-2.7.5m2.7-.5l-.5 2.7"/></svg>`
+  freezer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M12 2l-2 2m2-2l2 2M12 22l-2-2m2 2l2-2M4.5 6.5l2.7-.5m-2.7.5l.5-2.7M19.5 6.5l-2.7-.5m2.7.5l-.5-2.7M4.5 17.5l2.7.5m-2.7-.5l.5 2.7M19.5 17.5l-2.7.5m2.7-.5l-.5 2.7"/></svg>`,
+  heartOutline: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7.5-4.8-10-9.3C.5 8.4 2 5 5.3 5c2 0 3.4 1.1 4.2 2.3.3.4.9.4 1.2 0C11.5 6.1 12.9 5 14.9 5 18.2 5 19.7 8.4 22 11.7 19.5 16.2 12 21 12 21z"/></svg>`,
+  heartFilled: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7.5-4.8-10-9.3C.5 8.4 2 5 5.3 5c2 0 3.4 1.1 4.2 2.3.3.4.9.4 1.2 0C11.5 6.1 12.9 5 14.9 5 18.2 5 19.7 8.4 22 11.7 19.5 16.2 12 21 12 21z"/></svg>`
 };
+
+// ---- favorites & recently-viewed (stored locally per browser) ----
+const FAVORITES_KEY = 'yafit_favorites_v1';
+const RECENT_KEY = 'yafit_recent_v1';
+const RECENT_MAX = 8;
+
+function getFavorites(){
+  try{ return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')); }
+  catch(err){ return new Set(); }
+}
+function saveFavorites(set){
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(set)));
+}
+function isFavorite(id){
+  return getFavorites().has(id);
+}
+function toggleFavorite(id){
+  const favs = getFavorites();
+  if(favs.has(id)) favs.delete(id); else favs.add(id);
+  saveFavorites(favs);
+  syncUserDataToServer();
+}
+function getRecent(){
+  try{ return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+  catch(err){ return []; }
+}
+function addRecent(id){
+  let recent = getRecent().filter(x=>x!==id);
+  recent.unshift(id);
+  recent = recent.slice(0, RECENT_MAX);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  syncUserDataToServer();
+}
+
+// ---- cross-device sync via the Apps Script backend, keyed by the signed-in email ----
+function getCurrentEmail(){
+  return localStorage.getItem(APPROVED_KEY) || '';
+}
+function syncUserDataToServer(){
+  const email = getCurrentEmail();
+  if(!email) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'saveUserData',
+      email,
+      favorites: Array.from(getFavorites()),
+      recent: getRecent()
+    })
+  }).catch(()=>{});
+}
+async function loadUserDataFromServer(){
+  const email = getCurrentEmail();
+  if(!email) return;
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getUserData&email=${encodeURIComponent(email)}`, {cache:'no-store'});
+    const data = await res.json();
+    if(Array.isArray(data.favorites)) localStorage.setItem(FAVORITES_KEY, JSON.stringify(data.favorites));
+    if(Array.isArray(data.recent)) localStorage.setItem(RECENT_KEY, JSON.stringify(data.recent));
+    if(typeof renderRecent === 'function') renderRecent();
+    if(typeof renderGrid === 'function') renderGrid();
+  }catch(err){ /* silent - fall back to whatever is stored locally */ }
+}
 
 // ---- copyright / access-request gate ----
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
@@ -12,7 +78,6 @@ const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.goo
 const APPROVED_KEY = 'yafit_recipe_site_approved_email_v1';
 const PENDING_KEY = 'yafit_recipe_site_pending_email_v1';
 const TOKEN_KEY = 'yafit_recipe_site_token_v1';
-const AGREED_KEY = 'yafit_recipe_site_agreed_terms_v1';
 
 const gateOverlay = document.getElementById('gateOverlay');
 const gateStateForm = document.getElementById('gateStateForm');
@@ -29,6 +94,7 @@ const gateAgreeMsg = document.getElementById('gateAgreeMsg');
 function unlockSite(){
   gateOverlay.classList.remove('open');
   document.body.classList.remove('gate-locked');
+  loadUserDataFromServer();
 }
 function lockSite(){
   gateOverlay.classList.add('open');
@@ -49,13 +115,9 @@ function showAgreeState(){
   gateStatePending.style.display = 'none';
   gateStateAgree.style.display = 'block';
 }
-// after approval is confirmed: show terms once, or unlock straight away if already agreed
+// after approval is confirmed: always show the terms screen once per visit
 function proceedAfterApproval(){
-  if(localStorage.getItem(AGREED_KEY)){
-    unlockSite();
-  } else {
-    showAgreeState();
-  }
+  showAgreeState();
 }
 
 async function checkApproval(email){
@@ -148,7 +210,6 @@ gateAgreeBtn.addEventListener('click', ()=>{
     gateAgreeMsg.textContent = 'יש לסמן את התיבה כדי להמשיך.';
     return;
   }
-  localStorage.setItem(AGREED_KEY, '1');
   unlockSite();
 });
 
@@ -203,10 +264,13 @@ initGate();
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
 const guideFiltersEl = document.getElementById('guideFilters');
+const recentSection = document.getElementById('recentSection');
 const searchInput = document.getElementById('searchInput');
 const emptyState = document.getElementById('emptyState');
 const overlay = document.getElementById('overlay');
 const detailContent = document.getElementById('detailContent');
+
+let showFavoritesOnly = false;
 
 // ---- build age filter chips dynamically from data ----
 function ageKey(ageStr){
@@ -236,31 +300,67 @@ function renderFilters(){
   const chips = [{k:'all', label:'כל הגילאים'}, ...ages.map(a => ({k:a, label:`מגיל ${a} חודשים`}))];
   filtersEl.innerHTML = chips.map(c =>
     `<button class="chip ${activeAge===c.k?'active':''}" data-age="${c.k}">${c.label}</button>`
-  ).join('');
-  filtersEl.querySelectorAll('.chip').forEach(btn=>{
+  ).join('') + `<button class="chip fav-chip ${showFavoritesOnly?'active':''}" id="favToggleChip">${ICONS.heartFilled} מועדפים בלבד</button>`;
+  filtersEl.querySelectorAll('.chip[data-age]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       activeAge = btn.dataset.age;
       renderFilters();
       renderGrid();
     });
   });
+  document.getElementById('favToggleChip').addEventListener('click', ()=>{
+    showFavoritesOnly = !showFavoritesOnly;
+    renderFilters();
+    renderGrid();
+  });
+}
+
+function renderRecent(){
+  const recentIds = getRecent();
+  const recentRecipes = recentIds.map(id => RECIPES_ALL.find(r=>r.id===id)).filter(Boolean);
+  if(!recentRecipes.length){
+    recentSection.innerHTML = '';
+    recentSection.style.display = 'none';
+    return;
+  }
+  recentSection.style.display = 'block';
+  recentSection.innerHTML = `
+    <div class="recent-head">נצפו לאחרונה</div>
+    <div class="recent-strip">
+      ${recentRecipes.map(r => `
+        <div class="recent-card" data-id="${r.id}">
+          <img src="${r.image}" alt="${r.title}" loading="lazy">
+          <span class="recent-title">${r.title}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  recentSection.querySelectorAll('.recent-card').forEach(card=>{
+    card.addEventListener('click', ()=> openDetail(card.dataset.id));
+  });
 }
 
 function renderGrid(){
   const q = activeQuery.trim();
+  const favs = getFavorites();
   const filtered = RECIPES_ALL.filter(r=>{
     const matchesAge = activeAge==='all' || ageKey(r.age)===activeAge;
     const matchesGuide = activeGuide==='all' || String(r.guide)===activeGuide;
     const matchesQuery = !q || r.title.includes(q) || r.ingredients.some(i=>i.includes(q));
-    return matchesAge && matchesGuide && matchesQuery;
+    const matchesFav = !showFavoritesOnly || favs.has(r.id);
+    return matchesAge && matchesGuide && matchesQuery && matchesFav;
   });
   emptyState.style.display = filtered.length ? 'none' : 'block';
+  emptyState.textContent = showFavoritesOnly && !filtered.length
+    ? 'עדיין לא סימנת מתכונים כמועדפים ❤️'
+    : 'לא נמצאו מתכונים תואמים 🥄';
   grid.innerHTML = filtered.map(r => `
     <div class="card" data-id="${r.id}">
       <div class="thumb">
         <img src="${r.image}" alt="${r.title}" loading="lazy">
         <span class="age-pill">מגיל ${r.age}</span>
         <span class="guide-pill">מדריך ${r.guide}</span>
+        <button class="fav-btn ${favs.has(r.id)?'active':''}" data-fav-id="${r.id}" aria-label="מועדף">${favs.has(r.id) ? ICONS.heartFilled : ICONS.heartOutline}</button>
         <span class="credit-tag">@yafit.shw</span>
       </div>
       <div class="body">
@@ -276,17 +376,31 @@ function renderGrid(){
   grid.querySelectorAll('.card').forEach(card=>{
     card.addEventListener('click', ()=> openDetail(card.dataset.id));
   });
+  grid.querySelectorAll('.fav-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleFavorite(btn.dataset.favId);
+      renderGrid();
+    });
+  });
 }
 
 function openDetail(id){
   const r = RECIPES_ALL.find(x=>x.id===id);
   if(!r) return;
+  addRecent(id);
+  renderRecent();
+  const fav = isFavorite(id);
   detailContent.innerHTML = `
     <button class="detail-close" id="closeBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D2410" stroke-width="2.4"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
     <div class="detail-grid">
-      <div class="detail-photo"><img src="${r.image}" alt="${r.title}"><span class="credit-tag detail-credit">@yafit.shw</span></div>
+      <div class="detail-photo">
+        <img src="${r.image}" alt="${r.title}">
+        <span class="credit-tag detail-credit">@yafit.shw</span>
+        <button class="fav-btn detail-fav ${fav?'active':''}" id="detailFavBtn" aria-label="מועדף">${fav ? ICONS.heartFilled : ICONS.heartOutline}</button>
+      </div>
       <div class="detail-content">
         <div class="detail-title-banner">
           <h2>${r.title}</h2>
@@ -315,6 +429,11 @@ function openDetail(id){
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
   document.getElementById('closeBtn').addEventListener('click', closeDetail);
+  document.getElementById('detailFavBtn').addEventListener('click', ()=>{
+    toggleFavorite(id);
+    openDetail(id); // re-render to flip the heart state
+    renderGrid();
+  });
 }
 
 function closeDetail(){
@@ -331,4 +450,5 @@ searchInput.addEventListener('input', (e)=>{
 
 renderGuideFilters();
 renderFilters();
+renderRecent();
 renderGrid();
