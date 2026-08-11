@@ -11,6 +11,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJU
 const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.googleusercontent.com';
 const APPROVED_KEY = 'yafit_recipe_site_approved_email_v1';
 const PENDING_KEY = 'yafit_recipe_site_pending_email_v1';
+const TOKEN_KEY = 'yafit_recipe_site_token_v1';
 const AGREED_KEY = 'yafit_recipe_site_agreed_terms_v1';
 
 const gateOverlay = document.getElementById('gateOverlay');
@@ -18,6 +19,8 @@ const gateStateForm = document.getElementById('gateStateForm');
 const gateStatePending = document.getElementById('gateStatePending');
 const gateStateAgree = document.getElementById('gateStateAgree');
 const gateCheckBtn = document.getElementById('gateCheckBtn');
+const gateCancelBtn = document.getElementById('gateCancelBtn');
+const logoutBtn = document.getElementById('logoutBtn');
 const gateStatusMsg = document.getElementById('gateStatusMsg');
 const gateAgreeCheckbox = document.getElementById('gateAgreeCheckbox');
 const gateAgreeBtn = document.getElementById('gateAgreeBtn');
@@ -68,7 +71,13 @@ function submitAccessRequest(name, email){
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ name, email })
-  }).catch(()=>{ /* best-effort; approval check will still work later */ });
+  })
+    .then(res => res.json())
+    .then(data => {
+      if(data && data.token) localStorage.setItem(TOKEN_KEY, data.token);
+      return data;
+    })
+    .catch(()=>{ /* best-effort; approval check will still work later */ });
 }
 
 function parseJwt(token){
@@ -141,6 +150,27 @@ gateAgreeBtn.addEventListener('click', ()=>{
   }
   localStorage.setItem(AGREED_KEY, '1');
   unlockSite();
+});
+
+gateCancelBtn.addEventListener('click', ()=>{
+  localStorage.removeItem(PENDING_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  gateStatusMsg.textContent = '';
+  showFormState();
+});
+
+logoutBtn.addEventListener('click', async ()=>{
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(token){
+    try{
+      await fetch(`${APPS_SCRIPT_URL}?action=deleteRequest&token=${encodeURIComponent(token)}`, {cache:'no-store'});
+    }catch(err){ /* best-effort */ }
+  }
+  localStorage.removeItem(APPROVED_KEY);
+  localStorage.removeItem(PENDING_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  lockSite();
+  showFormState();
 });
 
 async function initGate(){
