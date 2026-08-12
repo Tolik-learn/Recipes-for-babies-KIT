@@ -283,11 +283,11 @@ let activeGuide = 'all';
 let activeQuery = '';
 
 function renderGuideFilters(){
-  const chips = [{k:'all', label:'כל המדריכים'}, ...GUIDES.map(g => ({k:String(g.id), label:`${g.name} · ${g.subtitle}`}))];
-  guideFiltersEl.innerHTML = chips.map(c =>
-    `<button class="chip ${activeGuide===c.k?'active':''}" data-guide="${c.k}">${c.label}</button>`
+  const tabs = [{k:'all', label:'הכל'}, ...GUIDES.map(g => ({k:String(g.id), label:g.subtitle}))];
+  guideFiltersEl.innerHTML = tabs.map(t =>
+    `<button class="tab-btn ${activeGuide===t.k?'active':''}" data-guide="${t.k}">${t.label}</button>`
   ).join('');
-  guideFiltersEl.querySelectorAll('.chip').forEach(btn=>{
+  guideFiltersEl.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       activeGuide = btn.dataset.guide;
       renderGuideFilters();
@@ -367,8 +367,8 @@ function renderGrid(){
         <h3>${r.title}</h3>
         <div class="meta">
           <span>${ICONS.time}${r.prep_time}</span>
-          <span>${ICONS.fridge}${r.fridge}</span>
-          <span>${ICONS.freezer}${r.freezer}</span>
+          ${r.fridge ? `<span>${ICONS.fridge}${r.fridge}</span>` : ''}
+          ${r.freezer ? `<span>${ICONS.freezer}${r.freezer}</span>` : ''}
         </div>
       </div>
     </div>
@@ -407,8 +407,8 @@ function openDetail(id){
           <div class="meta-row">
             <div class="m">${ICONS.age}<span class="m-label">גיל</span><span class="m-val">${r.age}</span></div>
             <div class="m">${ICONS.time}<span class="m-label">זמן הכנה</span><span class="m-val">${r.prep_time}</span></div>
-            <div class="m">${ICONS.fridge}<span class="m-label">במקרר</span><span class="m-val">${r.fridge}</span></div>
-            <div class="m">${ICONS.freezer}<span class="m-label">במקפיא</span><span class="m-val">${r.freezer}</span></div>
+            ${r.fridge ? `<div class="m">${ICONS.fridge}<span class="m-label">במקרר</span><span class="m-val">${r.fridge}</span></div>` : ''}
+            ${r.freezer ? `<div class="m">${ICONS.freezer}<span class="m-label">במקפיא</span><span class="m-val">${r.freezer}</span></div>` : ''}
           </div>
         </div>
         <div class="block">
@@ -452,3 +452,15 @@ renderGuideFilters();
 renderFilters();
 renderRecent();
 renderGrid();
+
+// ---- cutting-guide gallery lightbox ----
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+document.querySelectorAll('.cutting-card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    lightboxImg.src = card.dataset.src;
+    lightbox.classList.add('open');
+  });
+});
+lightbox.addEventListener('click', ()=> lightbox.classList.remove('open'));
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') lightbox.classList.remove('open'); });
