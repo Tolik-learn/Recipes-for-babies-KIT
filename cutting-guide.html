@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מדריך חיתוך ירקות ופירות | 100 המתכונים הראשונים שלי</title>
+<link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+<link rel="stylesheet" href="style.css">
+<style>
+.back-link{display:inline-flex;align-items:center;gap:6px;color:var(--terracotta);text-decoration:none;font-family:'Rubik';font-weight:700;font-size:.9rem;}
+.back-link:hover{text-decoration:underline;}
+.subpage-topbar{padding:18px 28px;border-bottom:1px solid rgba(180,113,75,.12);}
+</style>
+</head>
+<body>
+<div class="subpage-topbar">
+<a href="index.html" class="back-link">→ חזרה למתכונים</a>
+</div>
+<section id="cutting-guide" style="background:var(--band-mid);padding-bottom:60px;">
+<div class="section-head">
+<h2>מדריך חיתוך ירקות ופירות</h2>
+<p>איך לחתוך ולהגיש כל פרי וירק לפי גיל, בהתאם לעקרונות ה-Baby-Led Weaning</p>
+<div class="rule"></div>
+</div>
+<div class="wrap cutting-gallery">
+<div class="cutting-card" data-src="assets/cutting-guide/page-03.jpg"><img src="assets/cutting-guide/page-03.jpg" alt="מדריך חיתוך: מלפפון, עגבניה" loading="lazy"></div>
+<div class="cutting-card" data-src="assets/cutting-guide/page-04.jpg"><img src="assets/cutting-guide/page-04.jpg" alt="מדריך חיתוך: גזר מבושל, ברוקולי מבושל" loading="lazy"></div>
+<div class="cutting-card" data-src="assets/cutting-guide/page-05.jpg"><img src="assets/cutting-guide/page-05.jpg" alt="מדריך חיתוך: אבוקדו, בננה" loading="lazy"></div>
+<div class="cutting-card" data-src="assets/cutting-guide/page-06.jpg"><img src="assets/cutting-guide/page-06.jpg" alt="מדריך חיתוך: תפוח, מלון" loading="lazy"></div>
+<div class="cutting-card" data-src="assets/cutting-guide/page-07.jpg"><img src="assets/cutting-guide/page-07.jpg" alt="מדריך חיתוך: אוכמניות, נקטרינה" loading="lazy"></div>
+</div>
+</section>
+<div class="lightbox" id="lightbox">
+<img id="lightboxImg" src="" alt="">
+</div>
+<footer>
+<div class="fbrand">yafit.shw © כל הזכויות שמורות</div>
+<div>קיט מתכונים דיגיטלי לתינוקות · המתכונים, הטקסטים והתמונות באתר זה נוצרו על ידי yafit.shw</div>
+<div class="fnote">האתר לשימוש אישי/משפחתי בלבד · אין להעתיק, לשכפל, להפיץ או להעלות מחדש ללא רשות מפורשת מהיוצרת</div>
+</footer>
+<script>
+document.querySelectorAll('.cutting-card').forEach(card=>{
+card.addEventListener('click', ()=>{
+document.getElementById('lightboxImg').src = card.dataset.src;
+document.getElementById('lightbox').classList.add('open');
+});
+});
+document.getElementById('lightbox').addEventListener('click', function(){ this.classList.remove('open'); });
+</script>
+</body>
+</html>
