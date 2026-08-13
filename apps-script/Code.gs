@@ -153,6 +153,12 @@ function doGet(e) {
     return setApproval_(e.parameter.row, e.parameter.value === 'true');
   }
 
+  // NEW: admin-only, fully deletes the row instead of just flipping Approved to false
+  if (action === 'revokeAccess') {
+    if (!verifyAdmin_(e.parameter.idtoken)) return jsonOut_({ error: 'unauthorized' });
+    return revokeAccess_(e.parameter.row);
+  }
+
   // NEW: admin-only, read current notification toggle state
   if (action === 'getSettings') {
     if (!verifyAdmin_(e.parameter.idtoken)) return jsonOut_({ error: 'unauthorized' });
@@ -273,6 +279,12 @@ function setApproval_(row, value) {
   var sheet = getSheet_();
   sheet.getRange(Number(row), 5).setValue(value);
   return jsonOut_({ status: 'ok' });
+}
+
+function revokeAccess_(row) {
+  var sheet = getSheet_();
+  sheet.deleteRow(Number(row));
+  return jsonOut_({ status: 'revoked' });
 }
 
 // NEW: read-only screen - safe to be hit automatically by link previews,
