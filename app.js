@@ -222,7 +222,13 @@ gateAgreeBtn.addEventListener('click', ()=>{
   unlockSite();
 });
 
-gateCancelBtn.addEventListener('click', ()=>{
+gateCancelBtn.addEventListener('click', async ()=>{
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(token){
+    try{
+      await fetch(`${APPS_SCRIPT_URL}?action=deleteRequest&token=${encodeURIComponent(token)}`, {cache:'no-store'});
+    }catch(err){ /* best-effort - still clear local state below */ }
+  }
   localStorage.removeItem(PENDING_KEY);
   localStorage.removeItem(TOKEN_KEY);
   gateStatusMsg.textContent = '';
