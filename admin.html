@@ -202,13 +202,26 @@ function renderList(rows){
     </table>
   `;
   listContainer.querySelectorAll('button[data-action]').forEach(btn=>{
-    btn.addEventListener('click', ()=> toggleApproval(btn.dataset.row, btn.dataset.action === 'approve'));
+    btn.addEventListener('click', ()=> {
+      if(btn.dataset.action === 'approve'){
+        approveRow(btn.dataset.row);
+      } else {
+        revokeRow(btn.dataset.row);
+      }
+    });
   });
 }
 
-async function toggleApproval(row, approve){
+async function approveRow(row){
   const idToken = getIdToken();
-  await fetch(`${APPS_SCRIPT_URL}?action=setApproval&idtoken=${encodeURIComponent(idToken)}&row=${row}&value=${approve}`, {cache:'no-store'});
+  await fetch(`${APPS_SCRIPT_URL}?action=setApproval&idtoken=${encodeURIComponent(idToken)}&row=${row}&value=true`, {cache:'no-store'});
+  loadList();
+}
+
+async function revokeRow(row){
+  if(!confirm('לבטל גישה ולמחוק את הרשומה? לא ניתן לבטל פעולה זו.')) return;
+  const idToken = getIdToken();
+  await fetch(`${APPS_SCRIPT_URL}?action=revokeAccess&idtoken=${encodeURIComponent(idToken)}&row=${row}`, {cache:'no-store'});
   loadList();
 }
 
