@@ -42,6 +42,11 @@
   .row-btn.revoke{background:#fff;color:#b1503b;border:1.5px solid #b1503b;}
   .admin-empty{text-align:center;color:var(--ink-soft);padding:40px;}
   .admin-refresh{margin-bottom:16px;}
+.settings-card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:18px;}
+.settings-title{font-family:'Rubik';font-weight:700;color:var(--terracotta-deep);font-size:.92rem;margin-bottom:10px;}
+.settings-row{display:flex;align-items:center;gap:8px;font-size:.9rem;margin-bottom:6px;cursor:pointer;}
+.settings-row input{width:17px;height:17px;cursor:pointer;}
+.settings-status{font-size:.8rem;color:var(--sage-line);min-height:16px;margin-top:4px;}
   .admin-loading{text-align:center;color:var(--ink-soft);padding:40px;}
 .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--terracotta);text-decoration:none;font-family:'Rubik';font-weight:700;font-size:.9rem;margin-bottom:18px;}
 .back-link:hover{text-decoration:underline;}
@@ -63,6 +68,18 @@
   <div id="adminPanel" style="display:none;">
     <h1 class="admin-title">ניהול מורשים</h1>
     <p class="admin-sub">כל מי שביקש גישה לאתר המתכונים. אשרי או בטלי גישה בלחיצת כפתור.</p>
+    <div class="settings-card" id="settingsCard">
+      <div class="settings-title">קבלת התראה על בקשת גישה חדשה</div>
+      <label class="settings-row">
+        <input type="checkbox" id="notifyEmailCheckbox">
+        <span>📧 מייל</span>
+      </label>
+      <label class="settings-row">
+        <input type="checkbox" id="notifyTelegramCheckbox">
+        <span>💬 טלגרם</span>
+      </label>
+      <div class="settings-status" id="settingsStatusMsg"></div>
+    </div>
     <button class="btn btn-ghost admin-refresh" id="refreshBtn">↻ רענון רשימה</button>
     <div id="listContainer"></div>
   </div>
@@ -72,13 +89,16 @@
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
 const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.googleusercontent.com';
-const IDTOKEN_KEY = 'yafit_admin_idtoken_v1';
+const IDTOKEN_KEY = 'anatoly_admin_idtoken_v1';
 
 const lockScreen = document.getElementById('lockScreen');
 const adminPanel = document.getElementById('adminPanel');
 const lockError = document.getElementById('lockError');
 const listContainer = document.getElementById('listContainer');
 const refreshBtn = document.getElementById('refreshBtn');
+const notifyEmailCheckbox = document.getElementById('notifyEmailCheckbox');
+const notifyTelegramCheckbox = document.getElementById('notifyTelegramCheckbox');
+const settingsStatusMsg = document.getElementById('settingsStatusMsg');
 
 function getIdToken(){ return sessionStorage.getItem(IDTOKEN_KEY) || ''; }
 
@@ -95,10 +115,42 @@ async function tryUnlock(idToken){
     lockScreen.style.display = 'none';
     adminPanel.style.display = 'block';
     renderList(data);
+    loadSettings();
   }catch(err){
     lockError.textContent = 'שגיאת חיבור, נסי שוב.';
   }
 }
+
+async function loadSettings(){
+  const idToken = getIdToken();
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getSettings&idtoken=${encodeURIComponent(idToken)}`, {cache:'no-store'});
+    const data = await res.json();
+    if(data.error) return;
+    notifyEmailCheckbox.checked = !!data.email;
+    notifyTelegramCheckbox.checked = !!data.telegram;
+  }catch(err){}
+}
+
+async function saveSettings(){
+  settingsStatusMsg.textContent = 'שומר...';
+  const idToken = getIdToken();
+  try{
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=setSettings&idtoken=${encodeURIComponent(idToken)}&email=${notifyEmailCheckbox.checked}&telegram=${notifyTelegramCheckbox.checked}`, {cache:'no-store'});
+    const data = await res.json();
+    if(data.error){
+      settingsStatusMsg.textContent = 'שגיאה בשמירה.';
+      return;
+    }
+    settingsStatusMsg.textContent = 'נשמר ✓';
+    setTimeout(()=>{ settingsStatusMsg.textContent = ''; }, 1800);
+  }catch(err){
+    settingsStatusMsg.textContent = 'שגיאה בשמירה.';
+  }
+}
+
+notifyEmailCheckbox.addEventListener('change', saveSettings);
+notifyTelegramCheckbox.addEventListener('change', saveSettings);
 
 function handleAdminGoogleSignIn(response){
   tryUnlock(response.credential);
@@ -179,6 +231,7 @@ if(savedToken){
   lockScreen.style.display = 'none';
   adminPanel.style.display = 'block';
   loadList();
+  loadSettings();
 }
 </script>
 </body>

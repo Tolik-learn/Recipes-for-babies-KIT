@@ -9,8 +9,8 @@ const ICONS = {
 };
 
 // ---- favorites & recently-viewed (stored locally per browser) ----
-const FAVORITES_KEY = 'yafit_favorites_v1';
-const RECENT_KEY = 'yafit_recent_v1';
+const FAVORITES_KEY = 'anatoly_favorites_v1';
+const RECENT_KEY = 'anatoly_recent_v1';
 const RECENT_MAX = 8;
 
 function getFavorites(){
@@ -75,9 +75,11 @@ async function loadUserDataFromServer(){
 // ---- copyright / access-request gate ----
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
 const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.googleusercontent.com';
-const APPROVED_KEY = 'yafit_recipe_site_approved_email_v1';
-const PENDING_KEY = 'yafit_recipe_site_pending_email_v1';
-const TOKEN_KEY = 'yafit_recipe_site_token_v1';
+const APPROVED_KEY = 'anatoly_recipe_site_approved_email_v1';
+const PENDING_KEY = 'anatoly_recipe_site_pending_email_v1';
+const TOKEN_KEY = 'anatoly_recipe_site_token_v1';
+const SESSION_START_KEY = 'anatoly_recipe_site_session_start_v1';
+const SESSION_MAX_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 const gateOverlay = document.getElementById('gateOverlay');
 const gateStateForm = document.getElementById('gateStateForm');
@@ -99,6 +101,12 @@ function unlockSite(){
 function lockSite(){
   gateOverlay.classList.add('open');
   document.body.classList.add('gate-locked');
+}
+function softExpireSession(){
+  localStorage.removeItem(APPROVED_KEY);
+  localStorage.removeItem(SESSION_START_KEY);
+  lockSite();
+  showFormState();
 }
 function showPendingState(){
   gateStateForm.style.display = 'none';
@@ -192,6 +200,7 @@ gateCheckBtn.addEventListener('click', async ()=>{
     const approved = await checkApproval(email);
     if(approved){
       localStorage.setItem(APPROVED_KEY, email);
+      localStorage.setItem(SESSION_START_KEY, String(Date.now()));
       localStorage.removeItem(PENDING_KEY);
       proceedAfterApproval();
     } else {
@@ -237,8 +246,25 @@ logoutBtn.addEventListener('click', async ()=>{
 async function initGate(){
   const approvedEmail = localStorage.getItem(APPROVED_KEY);
   if(approvedEmail){
-    // re-validate periodically could go here; for now trust local approval
+    const sessionStart = Number(localStorage.getItem(SESSION_START_KEY) || 0);
+    if(sessionStart && (Date.now() - sessionStart) > SESSION_MAX_MS){
+      softExpireSession();
+      return;
+    }
     lockSite();
+    // always re-validate with the server: a revoked/deleted sheet row
+    // must lock the user out even if the local browser still remembers approval
+    try{
+      const stillApproved = await checkApproval(approvedEmail);
+      if(!stillApproved){
+        localStorage.removeItem(APPROVED_KEY);
+        localStorage.removeItem(SESSION_START_KEY);
+        showFormState();
+        return;
+      }
+    }catch(err){
+      // network error: fail safe and let the cached approval through for this load
+    }
     proceedAfterApproval();
     return;
   }
@@ -251,6 +277,7 @@ async function initGate(){
       const approved = await checkApproval(pendingEmail);
       if(approved){
         localStorage.setItem(APPROVED_KEY, pendingEmail);
+        localStorage.setItem(SESSION_START_KEY, String(Date.now()));
         localStorage.removeItem(PENDING_KEY);
         proceedAfterApproval();
       }
@@ -260,6 +287,13 @@ async function initGate(){
   }
 }
 initGate();
+
+setInterval(()=>{
+  const sessionStart = Number(localStorage.getItem(SESSION_START_KEY) || 0);
+  if(sessionStart && (Date.now() - sessionStart) > SESSION_MAX_MS && !gateOverlay.classList.contains('open')){
+    softExpireSession();
+  }
+}, 5 * 60 * 1000);
 
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
