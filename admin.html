@@ -22,11 +22,6 @@
     background:#fff;border-radius:20px;padding:34px;box-shadow:var(--shadow);
     max-width:420px;margin:60px auto;text-align:center;
   }
-  .admin-lock input{
-    width:100%;padding:12px 16px;border-radius:12px;border:1.5px solid rgba(180,113,75,.25);
-    font-family:'Heebo';font-size:.95rem;margin:16px 0;outline:none;
-  }
-  .admin-lock input:focus{border-color:var(--terracotta);}
   table.admin-table{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
   table.admin-table th{background:var(--band-mid);color:var(--terracotta-deep);font-family:'Rubik';font-weight:700;font-size:.82rem;padding:12px 14px;text-align:right;}
   table.admin-table td{padding:12px 14px;border-top:1px solid rgba(180,113,75,.1);font-size:.9rem;vertical-align:middle;}
@@ -66,14 +61,22 @@
   <div id="lockScreen" class="admin-lock">
     <div class="gate-icon" style="margin:0 auto 14px;">🔒</div>
     <h2 style="color:var(--terracotta);margin-bottom:10px;">ניהול מורשים</h2>
-    <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:6px;">רק בעל האתר יכול להיכנס לעמוד הזה.</p>
-    <p style="color:var(--ink-soft);font-size:.85rem;margin-bottom:16px;">התחבר עם חשבון ה-Google שלך כדי להמשיך.</p>
+    <p id="lockStatusText" style="color:var(--ink-soft);font-size:.9rem;margin-bottom:16px;">בודק הרשאות...</p>
     <div id="adminGoogleBtn" style="display:flex;justify-content:center;margin:10px 0;"></div>
     <div id="lockError" style="color:#b1503b;font-size:.85rem;margin-top:12px;"></div>
   </div>
 
+  <div id="deniedScreen" class="admin-lock" style="display:none;">
+    <div class="gate-icon" style="margin:0 auto 14px;">🚫</div>
+    <h2 style="color:var(--terracotta);margin-bottom:10px;">אין לך גישה</h2>
+    <p style="color:var(--ink-soft);font-size:.9rem;">עמוד זה מיועד לבעל האתר בלבד. נא לפנות למנהל.</p>
+  </div>
+
   <div id="adminPanel" style="display:none;">
-    <h1 class="admin-title">ניהול מורשים</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px;">
+      <h1 class="admin-title" style="margin-bottom:0;">ניהול מורשים</h1>
+      <button class="btn btn-ghost" id="signOutBtn" style="white-space:nowrap;">התנתקות</button>
+    </div>
     <p class="admin-sub">כל מי שביקש גישה לאתר המתכונים. אשרי או בטלי גישה בלחיצת כפתור.</p>
     <div class="settings-card" id="settingsCard">
       <div class="settings-title">קבלת התראה על בקשת גישה חדשה</div>
@@ -96,9 +99,14 @@
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRKdxmQxOImJJUAWey53QJwUGAUhFlHcZa8APXSfD1asOZ_-73Kat_auoOrtgOW0ZAbw/exec';
 const GOOGLE_CLIENT_ID = '843570895037-4hduefa8p8aacp7iehsrq203iekd895t.apps.googleusercontent.com';
-const IDTOKEN_KEY = 'anatoly_admin_idtoken_v1';
+
+// NEW: no sessionStorage/localStorage at all - the token only lives in memory
+// for the duration of this page load, so nothing is "remembered" in the browser.
+let currentIdToken = '';
 
 const lockScreen = document.getElementById('lockScreen');
+const deniedScreen = document.getElementById('deniedScreen');
+const lockStatusText = document.getElementById('lockStatusText');
 const adminPanel = document.getElementById('adminPanel');
 const lockError = document.getElementById('lockError');
 const listContainer = document.getElementById('listContainer');
@@ -107,19 +115,23 @@ const notifyEmailCheckbox = document.getElementById('notifyEmailCheckbox');
 const notifyTelegramCheckbox = document.getElementById('notifyTelegramCheckbox');
 const settingsStatusMsg = document.getElementById('settingsStatusMsg');
 
-function getIdToken(){ return sessionStorage.getItem(IDTOKEN_KEY) || ''; }
+function getIdToken(){ return currentIdToken; }
 
 async function tryUnlock(idToken){
   lockError.textContent = '';
+  lockStatusText.textContent = 'בודק הרשאות...';
   try{
     const res = await fetch(`${APPS_SCRIPT_URL}?action=list&idtoken=${encodeURIComponent(idToken)}`, {cache:'no-store'});
     const data = await res.json();
     if(data.error){
-      lockError.textContent = 'החשבון הזה לא מורשה לנהל את האתר.';
+      // NEW: signed in, but not the owner - show the access-denied screen
+      lockScreen.style.display = 'none';
+      deniedScreen.style.display = 'block';
       return;
     }
-    sessionStorage.setItem(IDTOKEN_KEY, idToken);
+    currentIdToken = idToken;
     lockScreen.style.display = 'none';
+    deniedScreen.style.display = 'none';
     adminPanel.style.display = 'block';
     renderList(data);
     loadSettings();
@@ -166,12 +178,22 @@ function handleAdminGoogleSignIn(response){
 if(window.google && google.accounts && google.accounts.id){
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
-    callback: handleAdminGoogleSignIn
+    callback: handleAdminGoogleSignIn,
+    auto_select: true    // NEW: silently sign in with the browser's active Google session, no click needed
   });
+  // NEW: always render a visible fallback button too, in case One Tap is
+  // blocked or skipped (e.g. user dismissed it before, multiple accounts)
   google.accounts.id.renderButton(
     document.getElementById('adminGoogleBtn'),
     { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'iw' }
   );
+  google.accounts.id.prompt((notification)=>{
+    if(notification.isNotDisplayed() || notification.isSkippedMoment()){
+      lockStatusText.textContent = 'התחבר עם חשבון ה-Google שלך כדי להמשיך.';
+    }
+  });
+} else {
+  lockStatusText.textContent = 'לא ניתן לטעון את שירות ההתחברות של Google.';
 }
 
 function renderList(rows){
@@ -232,9 +254,8 @@ async function loadList(){
     const res = await fetch(`${APPS_SCRIPT_URL}?action=list&idtoken=${encodeURIComponent(idToken)}`, {cache:'no-store'});
     const data = await res.json();
     if(data.error){
-      lockScreen.style.display = 'block';
       adminPanel.style.display = 'none';
-      sessionStorage.removeItem(IDTOKEN_KEY);
+      deniedScreen.style.display = 'block';
       return;
     }
     renderList(data);
@@ -245,14 +266,24 @@ async function loadList(){
 
 refreshBtn.addEventListener('click', loadList);
 
-// auto-unlock if a still-valid token is cached for this browser tab session
-const savedToken = getIdToken();
-if(savedToken){
-  lockScreen.style.display = 'none';
-  adminPanel.style.display = 'block';
-  loadList();
-  loadSettings();
-}
+const signOutBtn = document.getElementById('signOutBtn');
+signOutBtn.addEventListener('click', ()=>{
+  currentIdToken = '';
+  if(window.google && google.accounts && google.accounts.id){
+    google.accounts.id.disableAutoSelect();  // stop silently re-signing in on next load
+  }
+  adminPanel.style.display = 'none';
+  deniedScreen.style.display = 'none';
+  lockScreen.style.display = 'block';
+  lockStatusText.textContent = 'התחבר עם חשבון ה-Google שלך כדי להמשיך.';
+  document.getElementById('adminGoogleBtn').innerHTML = '';
+  if(window.google && google.accounts && google.accounts.id){
+    google.accounts.id.renderButton(
+      document.getElementById('adminGoogleBtn'),
+      { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'iw' }
+    );
+  }
+});
 </script>
 </body>
 </html>
