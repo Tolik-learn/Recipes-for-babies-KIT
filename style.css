@@ -102,7 +102,7 @@ img{max-width:100%;display:block;}
   margin-bottom:6px;
 }
 .hero h1 small{display:block;font-size:.4em;color:var(--sage);font-weight:700;margin-top:14px;}
-.hero-title-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,26px);}
+.hero-title-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,26px);margin-top:clamp(20px,4vw,50px);}
 .hero-side-logo{
   width:clamp(160px,20vw,220px);height:clamp(160px,20vw,220px);border-radius:50%;
   border:6px solid #F5D98C;object-fit:cover;flex-shrink:0;
