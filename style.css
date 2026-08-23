@@ -83,7 +83,7 @@ img{max-width:100%;display:block;}
 /* ---------- hero ---------- */
 .hero{
   position:relative;
-  background:linear-gradient(180deg,var(--band-dark) 0%, var(--band-dark) 8%, var(--band-mid) 8%, var(--band-mid) 20%, var(--cream) 20%);
+  background:linear-gradient(180deg,var(--band-dark) 0%, var(--band-dark) 8%, var(--band-mid) 8%, var(--band-mid) 27%, var(--cream) 27%);
   padding-top:64px;
   overflow:hidden;
 }
