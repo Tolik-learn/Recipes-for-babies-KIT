@@ -104,7 +104,7 @@ img{max-width:100%;display:block;}
 .hero h1 small{display:block;font-size:.4em;color:var(--sage);font-weight:700;margin-top:14px;}
 .hero-title-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,26px);}
 .hero-side-logo{
-  width:clamp(48px,7vw,72px);height:clamp(48px,7vw,72px);border-radius:50%;
+  width:clamp(64px,9vw,96px);height:clamp(64px,9vw,96px);border-radius:50%;
   border:3px solid #F5D98C;object-fit:cover;flex-shrink:0;
 }
 .hero p.lead{
@@ -381,6 +381,6 @@ footer .fnote{margin-top:10px;font-size:.76rem;opacity:.75;max-width:520px;margi
   .detail-content{padding:26px 22px 32px;}
   .meta-row{grid-template-columns:repeat(2,1fr);row-gap:14px;}
   .hero-title-row{flex-direction:column;}
-  .hero-side-logo{width:56px;height:56px;}
+  .hero-side-logo{width:72px;height:72px;}
   .hero-side-logo:last-of-type{display:none;}
 }
