@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.tolik_learn.twa",
+        "sha256_cert_fingerprints": ["F2:FD:6D:59:1A:BE:04:79:A8:E1:B7:AA:C6:62:F8:9E:8A:D1:88:63:0C:1C:D6:4B:40:34:6B:FD:D4:5C:D3:18"]
+      }
+    }]
