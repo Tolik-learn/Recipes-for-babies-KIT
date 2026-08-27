@@ -32,8 +32,6 @@
 </div>
 <script>
 (function(){
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (!isStandalone) return;
   var splash = document.getElementById('appSplash');
   splash.style.display = 'flex';
   var minTime = new Promise(function(resolve){ setTimeout(resolve, 3000); });
