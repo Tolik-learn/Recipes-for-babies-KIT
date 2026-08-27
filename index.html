@@ -26,26 +26,6 @@
 </head>
 <body>
 
-<div id="appSplash" style="display:none;position:fixed;inset:0;z-index:99999;background:#FBF1E9;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;transition:opacity .5s ease;">
-  <img src="assets/icons/gate-logo.png" alt="100 המתכונים הראשונים שלי" style="width:140px;height:140px;border-radius:50%;border:5px solid #F5D98C;object-fit:cover;">
-  <div style="font-family:'Rubik',sans-serif;font-weight:700;font-size:.95rem;color:#9C5F3C;">נוצר על ידי אנטולי דוידוב, שימוש נעים</div>
-</div>
-<script>
-(function(){
-  var splash = document.getElementById('appSplash');
-  splash.style.display = 'flex';
-  var minTime = new Promise(function(resolve){ setTimeout(resolve, 3000); });
-  var loaded = new Promise(function(resolve){
-    if (document.readyState === 'complete') resolve();
-    else window.addEventListener('load', resolve);
-  });
-  Promise.all([minTime, loaded]).then(function(){
-    splash.style.opacity = '0';
-    setTimeout(function(){ splash.style.display = 'none'; }, 500);
-  });
-})();
-</script>
-
 <div class="overlay gate-overlay open" id="gateOverlay">
   <div class="detail gate-card">
     <div class="gate-inner">
@@ -84,6 +64,7 @@
         </label>
         <button class="btn btn-primary gate-btn" id="gateAgreeBtn">כניסה לאתר</button>
         <div class="gate-status" id="gateAgreeMsg"></div>
+        <div style="text-align:center;font-size:.75rem;color:var(--ink-soft);margin-top:14px;">נוצר על ידי אנטולי דוידוב, שימוש נעים</div>
       </div>
 
     </div>
