@@ -36,7 +36,7 @@
   if (!isStandalone) return;
   var splash = document.getElementById('appSplash');
   splash.style.display = 'flex';
-  var minTime = new Promise(function(resolve){ setTimeout(resolve, 1200); });
+  var minTime = new Promise(function(resolve){ setTimeout(resolve, 3000); });
   var loaded = new Promise(function(resolve){
     if (document.readyState === 'complete') resolve();
     else window.addEventListener('load', resolve);
